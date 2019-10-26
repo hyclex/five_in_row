@@ -20,7 +20,7 @@ Packages:
 
 ### GUI bugs
 
-In the current version, there is some issue if you click when AI is computing. I left it here since it is OK to work and my focus is the searching algorithm. 
+In the current version, there is some issue if you click when AI is computing. 
 
 ### Forbidden Move Version
 
@@ -28,4 +28,4 @@ The current data structure could support the forbidden move. I will do it in the
 
 ### Search Engine Efficiency
 
-Other works could be improve the search engine efficiency. 
+Other works could be improving the search engine efficiency. 
