@@ -56,25 +56,25 @@ class ai_player(player):
             max_depth=1
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=10
+            max_pos_move_first=20
 
         if ai_level == 1:
             max_depth=2
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=10
+            max_pos_move_first=20
 
         if ai_level == 2:
             max_depth=3
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=10
+            max_pos_move_first=20
 
         if ai_level == 3:
             max_depth=4
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=10
+            max_pos_move_first=20
 
         return max_depth, search_range, max_pos_move, max_pos_move_first
 
