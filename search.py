@@ -215,7 +215,7 @@ class valueBoard:
             # if True == IS_DEBUG:
             #     if self.val_hash[encode_line_embedded(each)] != 0:
             #     print(each)
-        return res
+        return res/board.current_round
 
 if __name__ == "__main__":
     start = time.time()

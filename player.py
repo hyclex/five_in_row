@@ -65,13 +65,13 @@ class ai_player(player):
             max_pos_move_first=20
 
         if ai_level == 2:
-            max_depth=3
+            max_depth=4
             search_range=[2, 1]
             max_pos_move=6
             max_pos_move_first=20
 
         if ai_level == 3:
-            max_depth=4
+            max_depth=5
             search_range=[2, 1]
             max_pos_move=6
             max_pos_move_first=20
