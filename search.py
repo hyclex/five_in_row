@@ -19,12 +19,12 @@ class absearch:
     def get_strategy(self, board):
         is_win, list_must_move = self._short_cut_eval(board)
         possible_moves = self._find_all_moves(board)
-        possible_moves = self._sort_possible_moves(board, possible_moves)
+        possible_moves, board_values = self._sort_possible_moves(board, possible_moves)
         dest = possible_moves[0]
         best_val = -INF
         self.value_cache = dict() # cache the result to speed up searching
         count_remain_seach = self.max_pos_move_first
-        for each_move in possible_moves:
+        for each_move, board_value in zip(possible_moves, board_values):
             board.move(each_move, is_dest_padded=True)
             is_win_tmp, list_must_move_tmp = self._short_cut_eval(board)
             board.revert_move()
@@ -33,7 +33,7 @@ class absearch:
                 break
             elif each_move in list_must_move or (len(list_must_move)==0 and count_remain_seach>0) or (len(list_must_move)==0 and is_win_tmp > 0):
                 board.move(each_move, is_dest_padded=True)
-                each_val = self._search(board, best_val, self.max_depth+(each_move in list_must_move), is_win_tmp, list_must_move_tmp)
+                each_val = self._search(board, best_val, self.max_depth+(each_move in list_must_move), is_win_tmp, list_must_move_tmp, board_value)
                 board.revert_move()
                 if len(list_must_move)==0 and is_win_tmp == 0:
                     count_remain_seach -= 1
@@ -43,7 +43,7 @@ class absearch:
             # print(board.current_round, each_move, each_val, best_val)
         return board.padded_dest_to_dest(dest)
 
-    def _search(self, board, current_max, depth, is_win, list_must_move):
+    def _search(self, board, current_max, depth, is_win, list_must_move, board_value):
         try:
             return self.value_cache[board.encode_board()]
         except:
@@ -53,21 +53,20 @@ class absearch:
             self.value_cache[board.encode_board()] = res
             return res
         if depth == 0:
-            res = self.value_board.get_board_val(board, not board.is_b)
-            self.value_cache[board.encode_board()] = res
-            return res
+            self.value_cache[board.encode_board()] = board_value
+            return board_value
         possible_moves = self._find_all_moves(board)
         depth = depth - 1 
-        possible_moves = self._sort_possible_moves(board, possible_moves)
+        possible_moves, board_values = self._sort_possible_moves(board, possible_moves)
         best_val = -INF
         count_remain_search = self.max_pos_move
-        for each_move in possible_moves:
+        for each_move, board_value in zip(possible_moves, board_values):
             board.move(each_move, is_dest_padded=True)
             is_win_tmp, list_must_move_tmp = self._short_cut_eval(board)
             board.revert_move()
             if 2 == is_win_tmp or each_move in list_must_move or (len(list_must_move) == 0 and count_remain_search > 0) or (len(list_must_move) == 0 and 0 < is_win_tmp):
                 board.move(each_move, is_dest_padded=True)
-                each_val = self._search(board, best_val, depth+(each_move in list_must_move), is_win_tmp, list_must_move_tmp)
+                each_val = self._search(board, best_val, depth+(each_move in list_must_move), is_win_tmp, list_must_move_tmp, board_value)
                 board.revert_move()
                 if len(list_must_move) == 0 and is_win_tmp == 0:
                     count_remain_search -= 1
@@ -127,7 +126,7 @@ class absearch:
             board.revert_move()
         combo = list(zip(val, possible_moves))
         combo.sort(key=lambda x:x[0], reverse=True)
-        return [x[1] for x in combo]
+        return [x[1] for x in combo], [x[0] for x in combo]
 
 class valueBoard:
     """Value the board and make it efficient"""
