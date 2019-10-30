@@ -1,0 +1,4 @@
+1. in search, preevalate the move before the launch of the next subfunction. Include the winning move in the candidate moves. 
+2. Use cython to speed up
+3. GUI bug fix
+

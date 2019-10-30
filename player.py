@@ -44,7 +44,7 @@ class ai_player(player):
 
     def get_strategy(self, board):
         time_start = time.time()
-        time.sleep(0.1)
+        time.sleep(0.5)
         dest = self.begin_strategy(board)
         if dest == None:
             dest = self.engine.get_strategy(board)
@@ -56,25 +56,25 @@ class ai_player(player):
             max_depth=1
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=20
+            max_pos_move_first=10
 
         if ai_level == 1:
             max_depth=2
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=20
+            max_pos_move_first=10
 
         if ai_level == 2:
             max_depth=4
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=20
+            max_pos_move_first=15
 
         if ai_level == 3:
             max_depth=5
             search_range=[2, 1]
             max_pos_move=6
-            max_pos_move_first=20
+            max_pos_move_first=15
 
         return max_depth, search_range, max_pos_move, max_pos_move_first
 

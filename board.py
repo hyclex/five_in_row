@@ -3,6 +3,7 @@ import pickle
 from config import *
 if True == IS_DEBUG:
     import search
+import os
 
 class board:
     def __init__(self, moves=None):
@@ -122,13 +123,15 @@ class board:
         """Consider typical shapes of win, but does not consider the forbidden move"""
         if None == list_type and None == list_must_move:
             list_type, list_must_move = self.move_status()
+        if Shape.WU in list_type or Shape.CHANGLIAN in list_type:
+            return 2
         if len(list_must_move) >= 2:
-            return True
+            return 1
         if len(list_must_move) == 1 and len(list_type) >= 2:
-            return True
-        if Shape.HUOSI in list_type or Shape.WU in list_type or Shape.CHANGLIAN in list_type:
-            return True
-        return False
+            return 1
+        if Shape.HUOSI in list_type:
+            return 1
+        return 0
 
     def _is_win_with_forbidden(self):
         """judge whther black did forbidden move
@@ -238,6 +241,13 @@ class board:
 
     def encode_board(self):
         return (self.b[PAD_SIZE:PAD_SIZE+BOARD_SIZE, PAD_SIZE:PAD_SIZE+BOARD_SIZE] - self.w[PAD_SIZE:PAD_SIZE+BOARD_SIZE, PAD_SIZE:PAD_SIZE+BOARD_SIZE]).tostring()
+
+    def save(self, folder="res", name=None):
+        if name==None:
+            name="last_game"
+        with open(os.path.join(folder, name), "w") as fout:
+            for i in range(self.current_round):
+                fout.write(str(self.moves[i]))
 
 class MoveHash:
     """

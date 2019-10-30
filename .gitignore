@@ -1,5 +1,7 @@
 test.py
 rest.py
+res/*
+!res/.keep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
