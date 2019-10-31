@@ -33,6 +33,7 @@ class ai_move_thread(Thread):
         dest = current_player.get_strategy(main.board)
         main.board.move(dest)
         main.play_panel.refresh_text()
+        main.play_panel.log_last_move(main.board)
         main.play_panel.board_panel.update_piece(dest, main.board.get_b(dest), main.board.get_w(dest))
         main.board.update_game_status()
         main.play_panel.game_status_text.SetLabel("Game is running...")
@@ -73,6 +74,7 @@ class MainFrame(wx.Frame):
         self.welcome_panel.Hide()
         self.play_panel.Show()
         self.Layout()
+        self.play_panel.game_log.WriteText("***************************\nGame started.\n")
         # start the move
         wx.PostEvent(self, ResultEvent())
 
@@ -99,13 +101,15 @@ class MainFrame(wx.Frame):
             current_player.time_update()
             self.play_panel.refresh_text()
             self.play_panel.board_panel.update_piece(dest, 0, 0, False)
+            self.play_panel.game_log.WriteText("Move reverted.\n")
         if self.board.current_round > 0: # do it twice
             dest = self.board.get_last_move(is_padded=False)
             self.board.revert_move()
             current_player.time_update()
             self.play_panel.refresh_text()
             self.play_panel.board_panel.update_piece(dest, 0, 0, False)
-
+            self.play_panel.game_log.WriteText("Move reverted.\n")
+            
         wx.PostEvent(self, ResultEvent())
 
     def OnClick(self, event):
@@ -121,6 +125,7 @@ class MainFrame(wx.Frame):
 
         dest = self._pos_to_ind(pos_x, pos_y)
         move_stat = self.board.move(dest)
+        self.play_panel.log_last_move(self.board)
         if move_stat == 0:
             current_player.time_update()
             self.play_panel.refresh_text()
@@ -142,6 +147,7 @@ class MainFrame(wx.Frame):
         else:
             res = "Draw game. "
         self.play_panel.game_status_text.SetLabel(res)
+        self.play_panel.game_log.WriteText(res+"\nGame over.\n")
 
 
     def _init_player(self, is_b, player_type, ai_level):
@@ -232,11 +238,14 @@ class PlayPanel(wx.Panel):
         self.game_status_text = wx.StaticText(self, -1, "Game is running...")
         self.info_sizer.Add(self.game_status_text, 0, wx.ALIGN_LEFT | wx.BOTTOM, 20)
 
+        self.game_log = wx.TextCtrl(self, -1, size=(250, 400), style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
+        self.info_sizer.Add(self.game_log, 1, wx.ALIGN_LEFT | wx.BOTTOM, 20)
+
         self.revert_button = wx.Button(self, -1, "Revert")
         self.quit_button = wx.Button(self, -1, "ToMain")
         button_bar_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        button_bar_sizer.Add(self.revert_button, 1, wx.ALIGN_LEFT)
-        button_bar_sizer.Add(self.quit_button, 1, wx.ALIGN_LEFT)
+        button_bar_sizer.Add(self.revert_button, 0, wx.ALIGN_LEFT)
+        button_bar_sizer.Add(self.quit_button, 0, wx.ALIGN_LEFT)
         self.info_sizer.Add(button_bar_sizer, 0, wx.ALIGN_CENTER_HORIZONTAL)
 
         self.main_sizer.Add(self.info_sizer, 1, wx.ALIGN_LEFT | wx.ALL, 10)
@@ -266,6 +275,16 @@ class PlayPanel(wx.Panel):
             res = "Draw game. "
         self.game_status_text.SetLabel(res)
 
+    def log_last_move(self, board):
+        if False == board.is_b:
+            player = "Black"
+        else:
+            player = "White"
+        last_move = board.get_last_move(is_padded=False)
+        col_name = self.board_panel.COL_NAME[last_move[0]]
+        row_name = self.board_panel.ROW_NAME[last_move[1]]
+        self.game_log.WriteText(player+":\t"+col_name+" "+row_name+"\n")
+
 class BoardPanel(wx.Panel):
     """Bitmap board panel"""
     def __init__(self, parent):
@@ -275,7 +294,8 @@ class BoardPanel(wx.Panel):
         self.BOARD_SIZE = self.root.board.SIZE
         self._load_images()
         self.board_bmp = wx.StaticBitmap(self, -1, self.BOARD_BMP, (0,0))
-        self.init_piece()
+        self._init_piece()
+        self._init_pos_to_text()
 
     def update_piece(self, pos, is_b, is_w, is_show=True):
         if is_b > 0:
@@ -290,7 +310,7 @@ class BoardPanel(wx.Panel):
         else:
             self.piece_bmp[pos[0]][pos[1]].Hide()
 
-    def init_piece(self):
+    def _init_piece(self):
         self.piece_bmp = [[None] * self.BOARD_SIZE for i in range(self.BOARD_SIZE)]
         for i in range(self.BOARD_SIZE):
             for j in range(self.BOARD_SIZE):
@@ -311,6 +331,10 @@ class BoardPanel(wx.Panel):
         # mask = wx.Mask(self.BLACK_BMP, wx.WHITE)
         # self.BLACK_BMP.SetMask(mask)
         # self.WHITE_BMP.SetMask(mask)
+
+    def _init_pos_to_text(self):
+        self.ROW_NAME = [str(i) for i in range(15, -1, -1)]
+        self.COL_NAME = [chr(i) for i in range(65, 65+15)]
 
 if __name__ == "__main__":
     app = wx.App(False)
