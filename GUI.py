@@ -2,7 +2,6 @@ import wx
 import board
 from player import *
 import os
-from threading import *
 
 # Define notification event for thread completion
 EVT_RESULT_ID = wx.NewId()
@@ -18,29 +17,6 @@ class ResultEvent(wx.PyEvent):
         wx.PyEvent.__init__(self)
         self.SetEventType(EVT_RESULT_ID)
         self.data = data
-
-class ai_move_thread(Thread):
-    """AI move threading, in order to reveal instant frame changes"""
-    def __init__(self, main_frame):
-        Thread.__init__(self)
-        self.main_frame = main_frame
-        self.start()
-
-    def run(self):
-        main = self.main_frame
-        main.play_panel.game_status_text.SetLabel("Gaming is runing and AI is computing...")
-        current_player = main.get_current_player()
-        dest = current_player.get_strategy(main.board)
-        main.board.move(dest)
-        main.play_panel.refresh_text()
-        main.play_panel.log_last_move(main.board)
-        main.play_panel.board_panel.update_piece(dest, main.board.get_b(dest), main.board.get_w(dest))
-        main.board.update_game_status()
-        main.play_panel.game_status_text.SetLabel("Game is running...")
-        if main.board.status == 0:
-            wx.PostEvent(main, ResultEvent())
-        else:
-            main.ending(main.board.status)
 
 class MainFrame(wx.Frame):
     """Main control frame"""
@@ -82,7 +58,20 @@ class MainFrame(wx.Frame):
         if self.board.status != 0 or self.get_current_player().type == "human":
             self.get_current_player().timer_tic()
             return
-        self.ai_worker = ai_move_thread(self)
+        self.play_panel.game_status_text.SetLabel("Gaming is runing and AI is computing...")
+        current_player = self.get_current_player()
+        wx.Yield()
+        dest = current_player.get_strategy(self.board)
+        self.board.move(dest)
+        self.play_panel.refresh_text()
+        self.play_panel.log_last_move(self.board)
+        self.play_panel.board_panel.update_piece(dest, self.board.get_b(dest), self.board.get_w(dest))
+        self.board.update_game_status()
+        self.play_panel.game_status_text.SetLabel("Game is running...")
+        if self.board.status == 0:
+            wx.PostEvent(self, ResultEvent())
+        else:
+            self.ending(self.board.status)
 
     def OnQuit(self, event):
         self.play_panel.Hide()
