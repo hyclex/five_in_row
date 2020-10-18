@@ -4,7 +4,10 @@ import pickle
 import itertools
 import random
 import time
+
 random.seed(time.time())
+
+time_ = 0
 
 class absearch:
     def __init__(self, max_depth=4, search_range=[2, 1], max_pos_move=6, max_pos_move_first=10):
@@ -17,6 +20,10 @@ class absearch:
         assert search_range[0] <= PAD_SIZE and search_range[1] <= PAD_SIZE
 
     def get_strategy(self, board):
+        time_start = time.time()
+        global time_
+        time_ = 0
+
         is_win, list_must_move = self._short_cut_eval(board)
         possible_moves = self._find_all_moves(board)
         possible_moves, board_values = self._sort_possible_moves(board, possible_moves)
@@ -41,9 +48,15 @@ class absearch:
                     best_val = each_val
                     dest = each_move
             # print(board.current_round, each_move, each_val, best_val)
+
+        print("Overall time {:.1f} s".format(time.time()-time_start))
+        print("Hash time {:.1f} s".format(time_))
+
         return board.padded_dest_to_dest(dest)
 
     def _search(self, board, current_max, depth, is_win, list_must_move, board_value):
+        if IS_DEBUG:
+            global time_
         try:
             return self.value_cache[board.encode_board()]
         except:
@@ -214,30 +227,36 @@ class valueBoard:
 
         value_board = my_board - oppo_board
         shape = value_board.take(self.BOARD_MAP)
-        res = 0
-        for each in shape:
-            res += self.val_hash[encode_line_embedded(each)]
-            # if True == IS_DEBUG:
-            #     if self.val_hash[encode_line_embedded(each)] != 0:
-            #     print(each)
+        # res = 0
+        # for each in shape:
+        #     res += self.val_hash[encode_line_embedded(each)]
+        res_list = map(self.get_val_hash, shape)
+        res = sum(res_list)
+
         return res/board.current_round
 
-if __name__ == "__main__":
-    start = time.time()
-    val = valueBoard()
-    import board
-    board = board.board()
-    ai = absearch()
-    moves = [(7,7), (8,8), (7,6), (8,5), (7, 8)]
-    res = ai._find_all_moves(board)
-    print(res)
-    for move in moves:
-        board.move(move)
-        res = ai._find_all_moves(board)
-        print("possible moves")
-        print(res)
-        res = ai.get_strategy(board)
-        print("Strategy")
-        print(res)
+    def get_val_hash(self, key):
+        return self.val_hash[encode_line_embedded(key)]
 
-    print("Total time", time.time()-start)
+
+if __name__ == "__main__":
+    # start = time.time()
+    # val = valueBoard()
+    # import board
+    # board = board.board()
+    # ai = absearch()
+    # moves = [(7,7), (8,8), (7,6), (8,5), (7, 8)]
+    # res = ai._find_all_moves(board)
+    # print(res)
+    # for move in moves:
+    #     board.move(move)
+    #     res = ai._find_all_moves(board)
+    #     print("possible moves")
+    #     print(res)
+    #     res = ai.get_strategy(board)
+    #     print("Strategy")
+    #     print(res)
+
+    # print("Total time", time.time()-start)
+
+    val = valueBoard()

@@ -14,7 +14,7 @@ Packages:
 
 	numpy
 	
-	wx
+	wxPython
 
 ## Issues and Future Work
 
@@ -29,3 +29,6 @@ The current data structure could support the forbidden move. I will do it in the
 ### Search Engine Efficiency
 
 Other works could be improving the search engine efficiency. 
+
+## Acknowledgment
+Thanks Tong Li for the figures. 
