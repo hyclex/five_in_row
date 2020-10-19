@@ -4,18 +4,24 @@ import pickle
 import itertools
 import random
 import time
+import sys
 
 random.seed(time.time())
 
 time_ = 0
 
 class absearch:
-    def __init__(self, max_depth=4, search_range=[2, 1], max_pos_move=6, max_pos_move_first=10):
+    def __init__(self, max_depth=4, search_range=[2, 1],
+                 max_pos_move=6, max_pos_move_first=10,
+                 value_engine="window"):
         self.max_depth = max_depth
         self.max_pos_move_first = max_pos_move_first
         self.search_range = search_range
         self.max_pos_move = max_pos_move
-        self.value_board = valueBoard()
+        if value_engine == "window":
+            self.value_board = valueBoard()
+        elif value_engine == "full":
+            self.value_board = valueBoardFullLine()
 
         assert search_range[0] <= PAD_SIZE and search_range[1] <= PAD_SIZE
 
@@ -55,8 +61,6 @@ class absearch:
         return board.padded_dest_to_dest(dest)
 
     def _search(self, board, current_max, depth, is_win, list_must_move, board_value):
-        if IS_DEBUG:
-            global time_
         try:
             return self.value_cache[board.encode_board()]
         except:
@@ -144,39 +148,52 @@ class absearch:
 class valueBoard:
     """Value the board and make it efficient"""
     def __init__(self):
+        self.engine_name = "window"
         self.shape_value_self = SHAPE_VALUE_SELF
         self.shape_value_oppo = SHAPE_VALUE_OPPO
         self._init_val_hash() # val_hash: value of each five line. BOARD_MAP numpy array to quickly take all the five lines from a board.
 
-    def _init_val_hash(self, path = PATH_VAL_HASH):
+    def _init_val_hash(self, val_path = PATH_VAL_HASH, map_path = PATH_MAP_HASH):
         """Generate the value hash to evaluate the board values"""
         try:
-            with open(path, "rb") as fin:
+            with open(val_path, "rb") as fin:
                 self.val_hash = pickle.load(fin)
-                self.BOARD_MAP
-                if True == IS_DEBUG:
-                    print("Loaded value hash board map from "+path)
-                return
+            with open(map_path, "rb") as fin:
+                self.BOARD_MAP = pickle.load(fin)
+            self._check_loaded()
+
+            if True == IS_DEBUG:
+                print("Loaded value hash from "+val_path)
+                print("Loaded map hash from "+map_path)
+            return
         except:
             if True == IS_DEBUG:
                 print("Generating value hash...")
         self.val_hash = self._gen_val_hash()
         self.BOARD_MAP = self._gen_board_map()
         if True == IS_SAVE_CACHE:
-            if True == IS_DEBUG:
-                print("Saving value hash and board map to " +path)
-            with open(path, "wb") as fout:
+            if IS_DEBUG:
+                print("Saving value hash to " + val_path)
+            with open(val_path, "wb") as fout:
                 pickle.dump(self.val_hash, fout)
+            if IS_DEBUG:
+                print("Saving map hash to " + map_path)
+            with open(map_path, "wb") as fout:
                 pickle.dump(self.BOARD_MAP, fout)
 
+    def _check_loaded(self):
+        self.val_hash[encode_line_embedded(np.array([0]*VALUE_WINDOW, dtype=int))]
+        assert len(self.BOARD_MAP[0]) == VALUE_WINDOW
+
     def _gen_val_hash(self):
+        # get val_hash for value window
         val_hash = dict()
         for each_line_shape in itertools.product([-1, 0, 1], repeat=VALUE_WINDOW):
             key = encode_line_embedded(np.array(each_line_shape, dtype=int))
-            val_hash[key] = self._eval_line(each_line_shape)
+            val_hash[key] = self._eval_value_window(each_line_shape)
         return val_hash
 
-    def _eval_line(self, line_shape):
+    def _eval_value_window(self, line_shape):
         num_my_piece = line_shape.count(1)
         num_oppo_piece = line_shape.count(-1)
         if num_my_piece > 0 and num_oppo_piece > 0:
@@ -239,6 +256,73 @@ class valueBoard:
         return self.val_hash[encode_line_embedded(key)]
 
 
+class valueBoardFullLine(valueBoard):
+    def __init__(self):
+        super(valueBoardFullLine, self).__init__()
+        self.engine_name = "full"
+
+    def _check_loaded(self):
+        self.val_hash[encode_line_embedded(np.array([0]*BOARD_SIZE, dtype=int))]
+        assert len(self.BOARD_MAP[0, :]) == BOARD_SIZE
+
+    def _gen_val_hash(self):
+        # get val_hash for value window
+        val_hash = dict()
+        for each_line_shape in itertools.product([-1, 0, 1], repeat=VALUE_WINDOW):
+            key = encode_line_embedded(np.array(each_line_shape, dtype=int))
+            val_hash[key] = self._eval_value_window(each_line_shape)
+        # get val hash for each line
+        line_val_hash = dict()
+        total = 3 ** BOARD_SIZE
+        count = 0
+        one_per_count = int(total / 100) 
+        t_time = time.time()
+        if IS_DEBUG:
+            print("Starting to compute value hash...")
+        for each_line_shape in itertools.product([-1, 0, 1], repeat=BOARD_SIZE):
+            line_key = encode_line_embedded(np.array(each_line_shape, dtype=int))
+            if line_key not in line_val_hash:
+                tmp_val = 0
+                for pos in range(0, BOARD_SIZE - VALUE_WINDOW + 1):
+                    tmp_key = encode_line_embedded(np.array(each_line_shape[pos:pos+VALUE_WINDOW], dtype=int))
+                    tmp_val += val_hash[tmp_key]
+                line_val_hash[line_key] = tmp_val
+                reverse_key = encode_line_embedded(np.flip(np.array(each_line_shape, dtype=int)))
+                line_val_hash[reverse_key] = tmp_val
+            if IS_DEBUG:
+                count += 1
+                if count % one_per_count == 0:
+                    print("{:.3f} finished, time {:.1f} s, ETA {:.1f}".format(
+                        count/total, time.time()-t_time, (time.time()-t_time)/count*(total-count)))
+        return line_val_hash
+
+    def _gen_board_map(self):
+        board_map = []
+        LEN_PADDED_BORAD_ROW = 2 * PAD_SIZE + BOARD_SIZE
+        # heng
+        for i in range(PAD_SIZE, PAD_SIZE + BOARD_SIZE):
+            board_map.append([LEN_PADDED_BORAD_ROW * i + m for m in range(PAD_SIZE, BOARD_SIZE+PAD_SIZE)])
+                # print([(i-PAD_SIZE, m-PAD_SIZE) for m in range(j, j+VALUE_WINDOW)])
+        # shu
+        for j in range(PAD_SIZE, PAD_SIZE + BOARD_SIZE):
+            board_map.append([LEN_PADDED_BORAD_ROW * m + j for m in range(PAD_SIZE, BOARD_SIZE + PAD_SIZE)])
+                # print([ (m-PAD_SIZE, j-PAD_SIZE) for m in range(i, i + VALUE_WINDOW)])
+        # pie
+        for j in range(PAD_SIZE + VALUE_WINDOW-1, PAD_SIZE+BOARD_SIZE):
+            board_map.append([LEN_PADDED_BORAD_ROW * m + j - (m - PAD_SIZE) for m in range(PAD_SIZE, BOARD_SIZE + PAD_SIZE)])
+
+        for j in range(PAD_SIZE+1, PAD_SIZE+BOARD_SIZE-VALUE_WINDOW+1):
+            board_map.append([LEN_PADDED_BORAD_ROW * m + j + BOARD_SIZE - (m - PAD_SIZE) for m in range(PAD_SIZE, BOARD_SIZE + PAD_SIZE)])
+        # na
+        for i in range(PAD_SIZE + VALUE_WINDOW-1, PAD_SIZE+BOARD_SIZE):
+            board_map.append([LEN_PADDED_BORAD_ROW * (i - BOARD_SIZE + m - PAD_SIZE) + m for m in range(PAD_SIZE, BOARD_SIZE + PAD_SIZE)])
+
+        for i in range(PAD_SIZE+1, PAD_SIZE+BOARD_SIZE-VALUE_WINDOW+1):
+            board_map.append([LEN_PADDED_BORAD_ROW * (i + m - PAD_SIZE) + m for m in range(PAD_SIZE, BOARD_SIZE + PAD_SIZE)])
+
+        return np.array(board_map, dtype=int)
+
+
 if __name__ == "__main__":
     # start = time.time()
     # val = valueBoard()
@@ -259,4 +343,4 @@ if __name__ == "__main__":
 
     # print("Total time", time.time()-start)
 
-    val = valueBoard()
+    val = valueBoardFullLine()

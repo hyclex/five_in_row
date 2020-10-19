@@ -163,7 +163,7 @@ class board:
             return self.padded_dest_to_dest(self.moves[self.current_round-1])
 
 
-    def _init_move_hash(self, path=PATH_MAP_HASH):
+    def _init_move_hash(self, path=PATH_MOVE_HASH):
         try:
             with open(path, "rb") as fin:
                 self.move_hash = pickle.load(fin)
@@ -253,7 +253,7 @@ class MoveHash:
     """
     for effective check about the last moving shape. pre calculate all the combination of shapes. when gaming running, simply check the state by finding the pre computed result in the hash table
     """
-    def gen_last_move_hash(path=PATH_MAP_HASH):
+    def gen_last_move_hash(path=PATH_MOVE_HASH):
         import itertools
         """line_key => ((list of types), (move to break SI), [(move to break HUOSAN)"""
         move_hash = dict()
@@ -263,11 +263,11 @@ class MoveHash:
             key = encode_line_embedded(np.array(each_line_shape, dtype=int))
             move_hash[key] = MoveHash._eval_line(each_line_shape)
 
-        if True == IS_SAVE_CACHE:
-            if True == IS_DEBUG:
-                print("Saving move hash to " + path)
-            with open(path, "wb") as fout:
-                pickle.dump(move_hash, fout)
+        # if True == IS_SAVE_CACHE:
+        #     if True == IS_DEBUG:
+        #         print("Saving move hash to " + path)
+        #     with open(path, "wb") as fout:
+        #         pickle.dump(move_hash, fout)
         return move_hash
 
     def _eval_line(line):
